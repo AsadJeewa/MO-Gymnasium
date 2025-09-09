@@ -3,6 +3,7 @@ import mo_gymnasium.envs.continuous_mountain_car
 import mo_gymnasium.envs.deep_sea_treasure
 import mo_gymnasium.envs.fishwood
 import mo_gymnasium.envs.four_room
+import mo_gymnasium.envs.four_room_easy
 import mo_gymnasium.envs.fruit_tree
 import mo_gymnasium.envs.highway
 import mo_gymnasium.envs.lunar_lander
