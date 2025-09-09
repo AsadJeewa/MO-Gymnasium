@@ -51,7 +51,6 @@ class LinearReward(gym.Wrapper, gym.utils.RecordConstructorArgs):
         scalar_reward = np.dot(reward, self.w)
         info["vector_reward"] = reward
         info["reward_weights"] = self.w
-
         return observation, scalar_reward, terminated, truncated, info
 
 
@@ -303,3 +302,13 @@ class MOMaxAndSkipObservation(gym.Wrapper):
         max_frame = self._obs_buffer.max(axis=0)
 
         return max_frame, total_reward, terminated, truncated, info
+
+class SingleRewardWrapper(gym.Wrapper):
+    def __init__(self, env, reward_idx=0):
+        super().__init__(env)
+        self.reward_idx = reward_idx
+
+    def step(self, action):
+        obs, reward_vec, terminated, truncated, info = self.env.step(action)
+        reward = float(reward_vec[self.reward_idx])  # pick only one component
+        return obs, reward, terminated, truncated, info
