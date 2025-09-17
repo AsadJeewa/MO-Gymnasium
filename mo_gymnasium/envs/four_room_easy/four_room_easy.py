@@ -71,7 +71,7 @@ class FourRoomEasy(gym.Env, EzPickle):
 
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 4}
 
-    def __init__(self, render_mode: Optional[str] = None, maze=MAZE):
+    def __init__(self, render_mode: Optional[str] = None, maze=MAZE, log_info=None):
         """
         Creates a new instance of the shapes environment.
 
@@ -92,6 +92,7 @@ class FourRoomEasy(gym.Env, EzPickle):
         self.window_size = int(FourRoomEasy.ROW_COL *25)
         self.window = None
         self.clock = None
+        self.log_info = log_info
 
         self.height, self.width = maze.shape
         self.maze = maze
@@ -234,26 +235,35 @@ class FourRoomEasy(gym.Env, EzPickle):
         return phi
 
     def render(self):
+        top_bar_height = 50  # height of the top message area
         # The size of a single grid square in pixels
         pix_square_size = self.window_size // FourRoomEasy.ROW_COL
-
+        maze_offset = top_bar_height 
+        
         if self.window is None and self.render_mode is not None:
             pygame.init()
             if self.render_mode == "human":
                 pygame.display.init()
-                self.window = pygame.display.set_mode((self.window_size, self.window_size))
+                self.window = pygame.display.set_mode((self.window_size, self.window_size + top_bar_height))
         if self.clock is None and self.render_mode == "human":
             self.clock = pygame.time.Clock()
 
-        canvas = pygame.Surface((self.window_size, self.window_size))
+        canvas = pygame.Surface((self.window_size, self.window_size+top_bar_height))
         canvas.fill((255, 255, 255))
 
         pygame.font.init()
         self.font = pygame.font.SysFont(None, 48)
+        
+        pygame.draw.rect(canvas, (200, 200, 200), pygame.Rect(0, 0, self.window_size, top_bar_height))
+
+        if self.log_info is not None:
+            img = self.font.render(to_actual_obj(self.log_info), True, BLACK)
+            canvas.blit(img, (10, 10))  # 10 px padding from top-left
+        
         img = self.font.render("G", True, BLACK)
-        canvas.blit(img, (np.array(self.goal)[::-1] + 0.15) * pix_square_size)
+        canvas.blit(img, (np.array(self.goal)[::-1] + 0.15) * pix_square_size + np.array([0, maze_offset]))
         img = self.font.render("S", True, BLACK)
-        canvas.blit(img, (np.array(self.initial[0])[::-1] + 0.15) * pix_square_size)
+        canvas.blit(img, (np.array(self.initial[0])[::-1] + 0.15) * pix_square_size + np.array([0, maze_offset]))
 
         for i in range(self.maze.shape[0]):
             for j in range(self.maze.shape[1]):
@@ -262,13 +272,13 @@ class FourRoomEasy(gym.Env, EzPickle):
                 if collected[shape_id] == 1 and self.maze[i, j] != "X":
                     continue
 
-                pos = np.array([j, i])
+                pos = np.array([j, i])  
                 if self.maze[i, j] == "1":
                     pygame.draw.rect(
                         canvas,
                         BLUE,
                         pygame.Rect(
-                            pix_square_size * pos,
+                            pix_square_size * pos + np.array([0, maze_offset]),
                             (pix_square_size, pix_square_size),
                         ),
                     )
@@ -277,7 +287,7 @@ class FourRoomEasy(gym.Env, EzPickle):
                         canvas,
                         BLACK,
                         pygame.Rect(
-                            pix_square_size * pos + 1,
+                            pix_square_size * pos + np.array([0, maze_offset]) + 1,
                             (pix_square_size, pix_square_size),
                         ),
                     )
@@ -286,48 +296,49 @@ class FourRoomEasy(gym.Env, EzPickle):
                         canvas,
                         GREEN,
                         [
-                            (pos + np.array([0.5, 0.0])) * pix_square_size,
-                            (pos + np.array([0.0, 1.0])) * pix_square_size,
-                            (pos + 1.0) * pix_square_size,
+                            (pos + np.array([0.5, 0.0])) * pix_square_size + np.array([0, maze_offset]),
+                            (pos + np.array([0.0, 1.0])) * pix_square_size + np.array([0, maze_offset]),
+                            (pos + 1.0) * pix_square_size + np.array([0, maze_offset]),
                         ],
                     )
                 elif self.maze[i, j] == "3":
                     pygame.draw.circle(
                         canvas,
                         RED,
-                        (pos + 0.5) * pix_square_size,
+                        (pos + 0.5) * pix_square_size + np.array([0, maze_offset]),
                         pix_square_size / 2,
                     )
-
+        player_pos = np.array(self.state[0])[::-1]
         pygame.draw.circle(
             canvas,
             (125, 125, 125),
-            (np.array(self.state[0])[::-1] + 0.5) * pix_square_size,
+            (player_pos + 0.5) * pix_square_size + np.array([0, maze_offset]),
             pix_square_size / 3,
         )
 
         for x in range(13 + 1):
+            y_offset = maze_offset
             if x == 0 or x == 13:
                 width = 3
-                dash_lenght = 0
+                dash_length = 0
             else:
                 width = 1
-                dash_lenght = 3
+                dash_length = 3
             draw_line_dashed(
                 canvas,
                 0,
-                (0, pix_square_size * x),
-                (self.window_size, pix_square_size * x),
+                (0, pix_square_size * x + y_offset),
+                (self.window_size, pix_square_size * x + y_offset),
                 width=width,
-                dash_length=dash_lenght,
+                dash_length=dash_length,
             )
             draw_line_dashed(
                 canvas,
                 0,
-                (pix_square_size * x, 0),
-                (pix_square_size * x, self.window_size),
+                (pix_square_size * x, y_offset),
+                (pix_square_size * x, self.window_size + y_offset),
                 width=width,
-                dash_length=dash_lenght,
+                dash_length=dash_length,
             )
 
         if self.render_mode == "human":
@@ -349,6 +360,13 @@ class FourRoomEasy(gym.Env, EzPickle):
             self.window = None
             self.clock = None
 
+def to_actual_obj(obj_num):
+    if obj_num == 0:
+        return "blue"
+    if obj_num == 1:
+        return "green"
+    if obj_num == 2:
+        return "red"
 
 def draw_line_dashed(surface, color, start_pos, end_pos, width=1, dash_length=3, exclude_corners=True):
     """Code from https://codereview.stackexchange.com/questions/70143/drawing-a-dashed-line-with-pygame."""
