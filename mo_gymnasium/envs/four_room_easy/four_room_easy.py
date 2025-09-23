@@ -71,7 +71,7 @@ class FourRoomEasy(gym.Env, EzPickle):
 
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 4}
 
-    def __init__(self, render_mode: Optional[str] = None, maze=MAZE, log_info=None):
+    def __init__(self, render_mode: Optional[str] = None, maze=MAZE, log_info=None, specialisation=0):
         """
         Creates a new instance of the shapes environment.
 
@@ -99,10 +99,12 @@ class FourRoomEasy(gym.Env, EzPickle):
         shape_types = ["1", "2", "3"]
         self.all_shapes = dict(zip(shape_types, range(len(shape_types))))
 
+        self.specialisation = specialisation
         self.goal = None
         self.initial = []
         self.occupied = set()
         self.shape_ids = dict()
+        self.shape_type_ids = dict() 
         for c in range(self.width):
             for r in range(self.height):
                 if maze[r, c] == "G":
@@ -113,34 +115,34 @@ class FourRoomEasy(gym.Env, EzPickle):
                     self.occupied.add((r, c))
                 elif maze[r, c] in {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"}:
                     self.shape_ids[(r, c)] = len(self.shape_ids) #give number to each shape irrespective of type
-
+                    self.shape_type_ids[(r, c)] = int(maze[r,c]) #keep shape type
         self.action_space = Discrete(4)
         self.observation_space = Box(
             low=np.zeros(2 + len(self.shape_ids)),
             high=len(self.maze) * np.ones(2 + len(self.shape_ids)),
-            dtype=np.int32,
+            dtype=np.float32,
         )
         self.reward_space = Box(low=0, high=1, shape=(3,))
         self.reward_dim = 3
 
     def state_to_array(self, state):
         s = [element for tupl in state for element in tupl]
-        return np.array(s, dtype=np.int32)
+        return np.array(s, dtype=np.float32)
 
     def reset(self, seed=None, **kwargs):
         super().reset(seed=seed)
-
+        collected = tuple(0 for _ in range(len(self.shape_ids)))
         self.state = (
             random.choice(self.initial),
-            tuple(0 for _ in range(len(self.shape_ids))),
+            get_masked_collected(collected_all=list(collected),specialisation=1,shape_type_ids=list(self.shape_type_ids.values())), #all collected
         )
         if self.render_mode == "human":
             self.render()
         return self.state_to_array(self.state), {}
 
     def step(self, action):
-        old_state = self.state
-        (row, col), collected = self.state
+        old_state = self.state #initially from reset
+        (row, col), masked_collected = self.state
         # perform the movement
         if action == FourRoomEasy.LEFT:
             col -= 1
@@ -158,16 +160,16 @@ class FourRoomEasy(gym.Env, EzPickle):
         # out of bounds, cannot move
         if col < 0 or col >= self.width or row < 0 or row >= self.height:
             return (
-                self.state_to_array(self.state),
-                np.zeros(len(self.all_shapes), dtype=np.float32),
+                self.state_to_array(self.state),# obs
+                np.zeros(len(self.all_shapes), dtype=np.float32), # reward
                 terminated,
                 False,
                 {},
             )
 
         # into a blocked cell, cannot move
-        s1 = (row, col)
-        if s1 in self.occupied:
+        pos = (row, col)
+        if pos in self.occupied:
             return (
                 self.state_to_array(self.state),
                 np.zeros(len(self.all_shapes), dtype=np.float32),
@@ -177,22 +179,20 @@ class FourRoomEasy(gym.Env, EzPickle):
             )
 
         # can now move
-        self.state = (s1, collected)
-
+        self.state = (pos, masked_collected)
         if self.render_mode == "human":
             self.render()
+
         # into a goal cell
-        if s1 == self.goal:
-            # phi = np.ones(len(self.all_shapes), dtype=np.float32)
-            phi = np.full(len(self.all_shapes), FourRoomEasy.GOAL_REWARD, dtype=np.float32)
-            # phi = np.array(collected) * FourRoomEasy.GOAL_REWARD
+        if pos == self.goal:
+            phi = np.ones(len(self.all_shapes), dtype=np.float32)
             terminated = True
             return self.state_to_array(self.state), phi, terminated, False, {}
 
         # into a shape cell
-        if s1 in self.shape_ids: #row col
-            shape_id = self.shape_ids[s1]
-            if collected[shape_id] == 1:
+        if pos in self.shape_ids: #row col
+            shape_id = self.shape_ids[pos]
+            if masked_collected[shape_id] == 1:
                 
                 # already collected this flag
                 return (
@@ -204,11 +204,11 @@ class FourRoomEasy(gym.Env, EzPickle):
                 )
             else:
                 # collect the new flag
-                collected = list(collected)
+                collected = list(masked_collected)
                 collected[shape_id] = 1
-                collected = tuple(collected)
-                self.state = (s1, collected)
-                phi = self.features(old_state, action, self.state)
+                masked_collected = get_masked_collected(collected_all=collected,specialisation=self.specialisation,shape_type_ids=list(self.shape_type_ids.values()))
+                self.state = (pos, masked_collected)
+                phi = self.calc_vect_reward(old_state, action, self.state)
                 return self.state_to_array(self.state), phi, terminated, False, {}
 
         # into an empty cell
@@ -220,21 +220,25 @@ class FourRoomEasy(gym.Env, EzPickle):
             {},
         )
 
-    def features(self, state, action, next_state):
-        s1, _ = next_state
-        _, collected = state
-        nc = len(self.all_shapes)
-        phi = np.zeros(nc, dtype=np.float32)
-        if s1 in self.shape_ids:
-            if collected[self.shape_ids[s1]] != 1:
-                y, x = s1
+    def calc_vect_reward(self, state, action, next_state):
+        pos, _ = next_state
+        _, masked_collected = state
+        phi = np.zeros(len(self.all_shapes), dtype=np.float32)
+        if pos in self.shape_ids:
+            if masked_collected[self.shape_ids[pos]] != 1:
+                y, x = pos
                 shape_index = self.all_shapes[self.maze[y, x]]
-                phi[shape_index] = 1.0
-        elif s1 == self.goal:
-            phi[nc] = np.ones(nc, dtype=np.float32)
+                if self.specialisation == 0:
+                    phi[shape_index] = 1.0
+                else:
+                    if int(self.maze[y, x]) == self.specialisation:
+                        phi[shape_index] = 1.0
+        elif pos == self.goal:
+            phi = np.ones(len(self.all_shapes), dtype=np.float32)
         return phi
 
     def render(self):
+        # all shapes
         top_bar_height = 50  # height of the top message area
         # The size of a single grid square in pixels
         pix_square_size = self.window_size // FourRoomEasy.ROW_COL
@@ -257,7 +261,7 @@ class FourRoomEasy(gym.Env, EzPickle):
         pygame.draw.rect(canvas, (200, 200, 200), pygame.Rect(0, 0, self.window_size, top_bar_height))
 
         if self.log_info is not None:
-            img = self.font.render(to_actual_obj(self.log_info), True, BLACK)
+            img = self.font.render(to_obj_string(self.log_info), True, BLACK)
             canvas.blit(img, (10, 10))  # 10 px padding from top-left
         
         img = self.font.render("G", True, BLACK)
@@ -267,9 +271,9 @@ class FourRoomEasy(gym.Env, EzPickle):
 
         for i in range(self.maze.shape[0]):
             for j in range(self.maze.shape[1]):
-                (row, col), collected = self.state
+                (row, col), masked_collected = self.state
                 shape_id = self.shape_ids.get((i, j), 0)
-                if collected[shape_id] == 1 and self.maze[i, j] != "X":
+                if masked_collected[shape_id] == 1 and self.maze[i, j] != "X":
                     continue
 
                 pos = np.array([j, i])  
@@ -359,8 +363,16 @@ class FourRoomEasy(gym.Env, EzPickle):
             pygame.quit()
             self.window = None
             self.clock = None
+       
+def get_masked_collected(collected_all, specialisation, shape_type_ids):
+    if specialisation == 0:
+        return np.array(collected_all)
+    active_indices = [i for i, v in enumerate(shape_type_ids) if v == specialisation]
+    mask = np.zeros(len(collected_all), dtype=np.float32)
+    mask[active_indices] = 1.0
+    return np.array(collected_all*mask)
 
-def to_actual_obj(obj_num):
+def to_obj_string(obj_num):
     if obj_num == 0:
         return "blue"
     if obj_num == 1:
