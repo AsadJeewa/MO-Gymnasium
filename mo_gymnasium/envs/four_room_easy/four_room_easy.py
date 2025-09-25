@@ -234,7 +234,7 @@ class FourRoomEasy(gym.Env, EzPickle):
     def get_spec_obs(self):
         pos, collected_all = self.state
         masked = self.get_masked_collected(collected_all)
-        return self.state_to_array((pos, masked))
+        return np.expand_dims(self.state_to_array((pos, masked)), axis=0)
 
     def calc_vect_reward(self, state, next_state):
         pos, _ = next_state
