@@ -231,7 +231,7 @@ class FourRoomEasy(gym.Env, EzPickle):
             {},
         )
 
-    def get_obs(self):
+    def get_spec_obs(self):
         pos, collected_all = self.state
         masked = self.get_masked_collected(collected_all)
         return self.state_to_array((pos, masked))
@@ -382,7 +382,7 @@ class FourRoomEasy(gym.Env, EzPickle):
     
     def update_specialisation(self,specialisation):
         self.specialisation = specialisation
-        return np.expand_dims(self.get_obs(), axis=0) #TODO check
+        return np.expand_dims(self.get_spec_obs(), axis=0) #TODO check
 
     def get_masked_collected(self, collected_all):
         collected_all = list(collected_all)
