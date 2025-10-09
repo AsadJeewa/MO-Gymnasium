@@ -17,7 +17,7 @@ MAZE = np.array(
         [" ", "3", " ", " ", " ", " ", "1", " "],
         [" ", " ", " ", " ", "2", " ", " ", "3"],
         [" ", "1", " ", " ", " ", " ", "2", " "],
-        ["_", "3", " ", " ", "3", " ", " ", "1"],
+        ["S", "3", " ", " ", "3", " ", " ", "1"],
     ]
 )
 
@@ -112,7 +112,7 @@ class FourRoomEasy(gym.Env, EzPickle):
             for r in range(self.height):
                 if maze[r, c] == "G":
                     self.goal = (r, c)
-                elif maze[r, c] == "_":
+                elif maze[r, c] == "S":
                     self.initial.append((r, c))
                 elif maze[r, c] == "X":
                     self.occupied.add((r, c))
@@ -136,6 +136,7 @@ class FourRoomEasy(gym.Env, EzPickle):
         self.reward_dim = 3
 
     def state_to_array(self, state):
+        # converts multiple tuples to an array
         s = [element for tupl in state for element in tupl]
         return np.array(s, dtype=np.float32)
 
@@ -250,7 +251,7 @@ class FourRoomEasy(gym.Env, EzPickle):
                     if int(self.maze[y, x]) == self.specialisation:
                         phi[shape_index] = 1.0
         elif pos == self.goal:
-            phi = np.ones(len(self.all_shapes), dtype=np.float32)
+            phi = np.ones(len(self.all_shapes), dtype=np.float32) * self.GOAL_REWARD
         return phi
 
     def render(self):
@@ -385,7 +386,7 @@ class FourRoomEasy(gym.Env, EzPickle):
         return np.expand_dims(self.get_spec_obs(), axis=0) #TODO check
 
     def get_masked_collected(self, collected_all):
-        collected_all = list(collected_all)
+        collected_all = np.array(collected_all, dtype=np.float32)
         shape_types_list = [self.shape_type_ids[pos] for pos, _ in sorted(self.shape_ids.items(), key=lambda kv: kv[1])]
         if self.specialisation == 0:
             return np.array(collected_all)
