@@ -6,20 +6,51 @@ import numpy as np
 import pygame
 from gymnasium.spaces import Box, Discrete
 from gymnasium.utils import EzPickle
+from enum import Enum
 
+class DIFFICULTY(Enum):
+    EASY = 1
+    MEDIUM = 2
+    HARD = 3
 
-MAZE = np.array(
-    [
-        ["1", " ", "2", " ", "2", " ", " ", "G"],
-        [" ", " ", " ", "1", " ", "1", " ", " "],
-        [" ", " ", " ", " ", "3", " ", "2", " "],
-        ["2", " ", "3", " ", " ", " ", " ", " "],
-        [" ", "3", " ", " ", " ", " ", "1", " "],
-        [" ", " ", " ", " ", "2", " ", " ", "3"],
-        [" ", "1", " ", " ", " ", " ", "2", " "],
-        ["S", "3", " ", " ", "3", " ", " ", "1"],
-    ]
-)
+# START DEBUG 
+difficulty = DIFFICULTY.MEDIUM
+# END DEBUG
+
+if(difficulty == DIFFICULTY.EASY):
+    MAZE = np.array(
+        [
+            ["1", " ", "2", " ", "2", " ", " ", "G"],
+            [" ", " ", " ", "1", " ", "1", " ", " "],
+            [" ", " ", " ", " ", "3", " ", "2", " "],
+            ["2", " ", "3", " ", " ", " ", " ", " "],
+            [" ", "3", " ", " ", " ", " ", "1", " "],
+            [" ", " ", " ", " ", "2", " ", " ", "3"],
+            [" ", "1", " ", " ", " ", " ", "2", " "],
+            ["S", "3", " ", " ", "3", " ", " ", "1"],
+        ]
+    )
+
+elif(difficulty == DIFFICULTY.MEDIUM):
+    MAZE = np.array([
+        ["1", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", "G"],
+        [" ", " ", " ", " ", " ", "1", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "],
+        [" ", " ", " ", " ", " ", " ", " ", " ", " ", "2", " ", " ", " ", " ", " ", " "],
+        [" ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", "3", " ", " ", " "],
+        [" ", " ", " ", "2", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "],
+        [" ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "],
+        [" ", " ", " ", " ", " ", " ", "3", " ", " ", " ", " ", " ", " ", "1", " ", " "],
+        [" ", "1", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "],
+        [" ", " ", " ", " ", " ", " ", " ", " ", " ", " ", "3", " ", " ", " ", " ", " "],
+        [" ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "],
+        [" ", " ", " ", " ", " ", " ", " ", "3", " ", " ", " ", " ", " ", " ", " ", " "],
+        [" ", " ", "2", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", "2", " "],
+        [" ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "],
+        [" ", " ", " ", "1", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "],
+        ["S", " ", " ", " ", " ", " ", " ", "3", " ", " ", " ", " ", " ", " ", " ", " "],
+        [" ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", "2", " ", " ", " ", " "],
+    ])  
+
 
 BLUE = (0, 0, 255)
 RED = (255, 0, 0)
@@ -89,7 +120,7 @@ class FourRoomEasy(gym.Env, EzPickle):
         EzPickle.__init__(self, render_mode, maze)
 
         self.render_mode = render_mode
-        self.window_size = int(FourRoomEasy.ROW_COL *25)
+        self.window_size = (maze.shape[0] *25)
         self.window = None
         self.clock = None
         self.log_info = log_info
@@ -258,7 +289,7 @@ class FourRoomEasy(gym.Env, EzPickle):
         # all shapes
         top_bar_height = 50  # height of the top message area
         # The size of a single grid square in pixels
-        pix_square_size = self.window_size // FourRoomEasy.ROW_COL
+        pix_square_size = self.window_size // self.height
         maze_offset = top_bar_height 
         
         if self.window is None and self.render_mode is not None:
@@ -337,30 +368,18 @@ class FourRoomEasy(gym.Env, EzPickle):
             pix_square_size / 3,
         )
 
-        for x in range(13 + 1):
-            y_offset = maze_offset
-            if x == 0 or x == 13:
-                width = 3
-                dash_length = 0
-            else:
-                width = 1
-                dash_length = 3
-            draw_line_dashed(
-                canvas,
-                0,
-                (0, pix_square_size * x + y_offset),
-                (self.window_size, pix_square_size * x + y_offset),
-                width=width,
-                dash_length=dash_length,
-            )
-            draw_line_dashed(
-                canvas,
-                0,
-                (pix_square_size * x, y_offset),
-                (pix_square_size * x, self.window_size + y_offset),
-                width=width,
-                dash_length=dash_length,
-            )
+        # Horizontal lines
+        for i in range(self.height + 1):
+            y = i * pix_square_size + maze_offset
+            width = 3 if i == 0 or i == self.height else 1
+            draw_line_dashed(canvas, BLACK, (0, y), (self.window_size, y), width=width)
+
+        # Vertical lines
+        for j in range(self.width + 1):
+            x = j * pix_square_size
+            width = 3 if j == 0 or j == self.width else 1
+            draw_line_dashed(canvas, BLACK, (x, maze_offset), (x, self.window_size + maze_offset), width=width)
+
 
         if self.render_mode == "human":
             # The following line copies our drawings from `canvas` to the visible window
