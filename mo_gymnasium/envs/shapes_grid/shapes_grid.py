@@ -47,7 +47,7 @@ elif(difficulty == DIFFICULTY.MEDIUM):
         [" ", " ", "2", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", "2", " "],
         [" ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "],
         [" ", " ", " ", "1", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "],
-        ["S", " ", " ", " ", " ", " ", " ", "3", " ", " ", " ", " ", " ", " ", " ", " "],
+        ["S", " ", " ", " ", " ", " ", " ", "3", " ", " ", " ", " ", " ", " ", " ", " "],#TODO MOVE S BELOW
         [" ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", "2", " ", " ", " ", " "],
     ])  
 
@@ -58,7 +58,7 @@ GREEN = (0, 128, 0)
 BLACK = (0, 0, 0)
 
 
-class FourRoomEasy(gym.Env, EzPickle):
+class ShapesGrid(gym.Env, EzPickle):
     """
     ## Description
     A discretized version of the gridworld environment introduced in [1]. Here, an agent learns to
@@ -187,13 +187,13 @@ class FourRoomEasy(gym.Env, EzPickle):
         prev_state = self.state #initially from reset
         (row, col), collected = self.state
         # perform the movement
-        if action == FourRoomEasy.LEFT:
+        if action == ShapesGrid.LEFT:
             col -= 1
-        elif action == FourRoomEasy.UP:
+        elif action == ShapesGrid.UP:
             row -= 1
-        elif action == FourRoomEasy.RIGHT:
+        elif action == ShapesGrid.RIGHT:
             col += 1
-        elif action == FourRoomEasy.DOWN:
+        elif action == ShapesGrid.DOWN:
             row += 1
         else:
             raise Exception(f"bad action {action}")
