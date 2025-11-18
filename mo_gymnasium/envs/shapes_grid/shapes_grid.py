@@ -9,15 +9,23 @@ from gymnasium.utils import EzPickle
 from enum import Enum
 
 class DIFFICULTY(Enum):
-    EASY = 1
-    MEDIUM = 2
+    TOY = 1
+    EASY = 2
     HARD = 3
 
 # START DEBUG 
-difficulty = DIFFICULTY.MEDIUM
+difficulty = DIFFICULTY.TOY
 # END DEBUG
 
-if(difficulty == DIFFICULTY.EASY):
+if(difficulty == DIFFICULTY.TOY):
+    MAZE = np.array(
+    [
+        ["1", " ", "G"],
+        [" ", "2", " "],
+        ["S", " ", "3"],
+    ]
+    )
+elif(difficulty == DIFFICULTY.EASY):
     MAZE = np.array(
         [
             ["1", " ", "2", " ", "2", " ", " ", "G"],
@@ -31,7 +39,7 @@ if(difficulty == DIFFICULTY.EASY):
         ]
     )
 
-elif(difficulty == DIFFICULTY.MEDIUM):
+elif(difficulty == DIFFICULTY.HARD):
     MAZE = np.array([
         ["1", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", "G"],
         [" ", " ", " ", " ", " ", "1", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "],
@@ -99,6 +107,7 @@ class ShapesGrid(gym.Env, EzPickle):
     
     GOAL_REWARD = 0.1
     SHAPE_REWARD = 1.0
+    TIME_PENALTY = -0.01
 
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 4}
 
@@ -204,7 +213,7 @@ class ShapesGrid(gym.Env, EzPickle):
         if col < 0 or col >= self.width or row < 0 or row >= self.height:
             return (
                 self.state_to_array(self.state),# obs
-                np.zeros(len(self.all_shapes), dtype=np.float32), # reward
+                np.ones(len(self.all_shapes), dtype=np.float32) * self.TIME_PENALTY,
                 terminated,
                 False,
                 {},
@@ -215,7 +224,7 @@ class ShapesGrid(gym.Env, EzPickle):
         if pos in self.occupied:
             return (
                 self.state_to_array(self.state),
-                np.zeros(len(self.all_shapes), dtype=np.float32),
+                np.ones(len(self.all_shapes), dtype=np.float32) * self.TIME_PENALTY,
                 terminated,
                 False,
                 {},
@@ -228,7 +237,7 @@ class ShapesGrid(gym.Env, EzPickle):
 
         # into a goal cell
         if pos == self.goal:
-            phi = np.ones(len(self.all_shapes), dtype=np.float32)
+            phi = self.calc_vect_reward(prev_state, self.state)
             terminated = True
             return self.state_to_array(self.state), phi, terminated, False, {}
 
@@ -240,7 +249,7 @@ class ShapesGrid(gym.Env, EzPickle):
                 # already collected this flag
                 return (
                     self.state_to_array(self.state),
-                    np.zeros(len(self.all_shapes), dtype=np.float32),
+                    np.ones(len(self.all_shapes), dtype=np.float32) * self.TIME_PENALTY,
                     terminated,
                     False,
                     {},
@@ -257,7 +266,7 @@ class ShapesGrid(gym.Env, EzPickle):
         # into an empty cell
         return (
             self.state_to_array(self.state),
-            np.zeros(len(self.all_shapes), dtype=np.float32),
+            np.ones(len(self.all_shapes), dtype=np.float32) * self.TIME_PENALTY,
             terminated,
             False,
             {},
@@ -277,10 +286,10 @@ class ShapesGrid(gym.Env, EzPickle):
                 y, x = pos
                 shape_index = self.all_shapes[self.maze[y, x]]
                 if self.specialisation == 0:
-                    phi[shape_index] = 1.0
+                    phi[shape_index] = self.SHAPE_REWARD
                 else:
                     if int(self.maze[y, x]) == self.specialisation:
-                        phi[shape_index] = 1.0
+                        phi[shape_index] = self.SHAPE_REWARD
         elif pos == self.goal:
             phi = np.ones(len(self.all_shapes), dtype=np.float32) * self.GOAL_REWARD
         return phi
