@@ -56,10 +56,6 @@ class ShapesGrid(gym.Env, EzPickle):
     """
 
     LEFT, UP, RIGHT, DOWN = 0, 1, 2, 3    
-    GOAL_REWARD = 0.1
-    SHAPE_REWARD = 1.0
-    TIME_PENALTY = -0.01
-
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 4}
 
     def __init__(self, render_mode: Optional[str] = None, log_info=None, specialisation=0, difficulty=DIFFICULTY.TOY, **kwargs):
@@ -122,6 +118,11 @@ class ShapesGrid(gym.Env, EzPickle):
         except KeyError:
             raise ValueError(f"Unknown difficulty: {difficulty}")
 
+        self.GOAL_REWARD = 0.1
+        self.SHAPE_REWARD = 1.0
+        height, width = MAZE.shape
+        self.TIME_PENALTY = -1.0 / (height * width)
+        
         self.render_mode = render_mode
         self.window_size = (MAZE.shape[0] *25)
         self.window = None
