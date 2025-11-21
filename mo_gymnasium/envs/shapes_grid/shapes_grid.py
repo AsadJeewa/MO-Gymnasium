@@ -13,53 +13,6 @@ class DIFFICULTY(Enum):
     EASY = 2
     HARD = 3
 
-# START DEBUG 
-difficulty = DIFFICULTY.TOY
-# END DEBUG
-
-if(difficulty == DIFFICULTY.TOY):
-    MAZE = np.array(
-    [
-        ["1", " ", "G"],
-        [" ", "2", " "],
-        ["S", " ", "3"],
-    ]
-    )
-elif(difficulty == DIFFICULTY.EASY):
-    MAZE = np.array(
-        [
-            ["1", " ", "2", " ", "2", " ", " ", "G"],
-            [" ", " ", " ", "1", " ", "1", " ", " "],
-            [" ", " ", " ", " ", "3", " ", "2", " "],
-            ["2", " ", "3", " ", " ", " ", " ", " "],
-            [" ", "3", " ", " ", " ", " ", "1", " "],
-            [" ", " ", " ", " ", "2", " ", " ", "3"],
-            [" ", "1", " ", " ", " ", " ", "2", " "],
-            ["S", "3", " ", " ", "3", " ", " ", "1"],
-        ]
-    )
-
-elif(difficulty == DIFFICULTY.HARD):
-    MAZE = np.array([
-        ["1", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", "G"],
-        [" ", " ", " ", " ", " ", "1", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "],
-        [" ", " ", " ", " ", " ", " ", " ", " ", " ", "2", " ", " ", " ", " ", " ", " "],
-        [" ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", "3", " ", " ", " "],
-        [" ", " ", " ", "2", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "],
-        [" ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "],
-        [" ", " ", " ", " ", " ", " ", "3", " ", " ", " ", " ", " ", " ", "1", " ", " "],
-        [" ", "1", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "],
-        [" ", " ", " ", " ", " ", " ", " ", " ", " ", " ", "3", " ", " ", " ", " ", " "],
-        [" ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "],
-        [" ", " ", " ", " ", " ", " ", " ", "3", " ", " ", " ", " ", " ", " ", " ", " "],
-        [" ", " ", "2", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", "2", " "],
-        [" ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "],
-        [" ", " ", " ", "1", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "],
-        ["S", " ", " ", " ", " ", " ", " ", "3", " ", " ", " ", " ", " ", " ", " ", " "],#TODO MOVE S BELOW
-        [" ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", "2", " ", " ", " ", " "],
-    ])  
-
-
 BLUE = (0, 0, 255)
 RED = (255, 0, 0)
 GREEN = (0, 128, 0)
@@ -102,16 +55,14 @@ class ShapesGrid(gym.Env, EzPickle):
     Code adapted from: [Mike Gimelfarb's source](https://github.com/mike-gimelfarb/deep-successor-features-for-transfer/blob/main/source/tasks/gridworld.py).
     """
 
-    LEFT, UP, RIGHT, DOWN = 0, 1, 2, 3
-    ROW_COL = MAZE.shape[0]
-    
+    LEFT, UP, RIGHT, DOWN = 0, 1, 2, 3    
     GOAL_REWARD = 0.1
     SHAPE_REWARD = 1.0
     TIME_PENALTY = -0.01
 
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 4}
 
-    def __init__(self, render_mode: Optional[str] = None, maze=MAZE, log_info=None, specialisation=0):
+    def __init__(self, render_mode: Optional[str] = None, log_info=None, specialisation=0, difficulty=DIFFICULTY.TOY, **kwargs):
         """
         Creates a new instance of the shapes environment.
 
@@ -126,19 +77,63 @@ class ShapesGrid(gym.Env, EzPickle):
                 0, 1, .... 9 indicates the type of shape to be placed in the corresponding cell
                 entries containing other characters are treated as regular empty cells
         """
-        EzPickle.__init__(self, render_mode, maze)
+        EzPickle.__init__(self, render_mode)
+        MAZES = {
+    DIFFICULTY.TOY: np.array(
+            [
+                ["1", " ", "G"],
+                [" ", "2", " "],
+                ["S", " ", "3"],
+            ]
+            ),
+    DIFFICULTY.EASY: np.array(
+                [
+                    ["1", " ", "2", " ", "2", " ", " ", "G"],
+                    [" ", " ", " ", "1", " ", "1", " ", " "],
+                    [" ", " ", " ", " ", "3", " ", "2", " "],
+                    ["2", " ", "3", " ", " ", " ", " ", " "],
+                    [" ", "3", " ", " ", " ", " ", "1", " "],
+                    [" ", " ", " ", " ", "2", " ", " ", "3"],
+                    [" ", "1", " ", " ", " ", " ", "2", " "],
+                    ["S", "3", " ", " ", "3", " ", " ", "1"],
+                ]
+            ),
+    DIFFICULTY.HARD: np.array([
+                ["1", " ", " ", " ", " ", " ", " ", " ", "3", " ", " ", " ", " ", " ", " ", "G"],
+                [" ", " ", " ", " ", " ", "1", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "],
+                [" ", " ", " ", " ", " ", " ", " ", " ", " ", "2", " ", " ", " ", " ", " ", " "],
+                [" ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", "3", " ", " ", " "],
+                [" ", " ", " ", "2", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "],
+                [" ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "],
+                [" ", " ", " ", " ", " ", " ", "3", " ", " ", " ", " ", " ", " ", "1", " ", " "],
+                [" ", "1", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "],
+                [" ", " ", " ", " ", " ", " ", " ", " ", " ", " ", "3", " ", " ", " ", " ", " "],
+                [" ", " ", " ", " ", "2", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "],
+                [" ", " ", " ", " ", " ", " ", " ", "3", " ", " ", " ", " ", " ", " ", " ", " "],
+                [" ", " ", "2", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", "2", " "],
+                [" ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", "1", " ", " ", " ", " "],
+                [" ", " ", " ", "1", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "],
+                [" ", " ", " ", " ", " ", " ", " ", "3", " ", " ", " ", " ", " ", " ", " ", " "],#TODO MOVE S BELOW
+                ["S", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", "2", " ", " ", " ", " "],
+            ]) 
+        }
+        try:
+            MAZE = MAZES[difficulty]
+        except KeyError:
+            raise ValueError(f"Unknown difficulty: {difficulty}")
 
         self.render_mode = render_mode
-        self.window_size = (maze.shape[0] *25)
+        self.window_size = (MAZE.shape[0] *25)
         self.window = None
         self.clock = None
         self.log_info = log_info
         self.seed = 0
-        self.height, self.width = maze.shape
-        self.maze = maze
+        self.height, self.width = MAZE.shape
+        self.maze = MAZE
         shape_types = ["1", "2", "3"]
         self.all_shapes = dict(zip(shape_types, range(len(shape_types))))
 
+        self.difficulty = difficulty
         self.specialisation = specialisation
         self.goal = None
         self.initial = []
@@ -150,14 +145,14 @@ class ShapesGrid(gym.Env, EzPickle):
 
         for c in range(self.width):
             for r in range(self.height):
-                if maze[r, c] == "G":
+                if self.maze[r, c] == "G":
                     self.goal = (r, c)
-                elif maze[r, c] == "S":
+                elif self.maze[r, c] == "S":
                     self.initial.append((r, c))
-                elif maze[r, c] == "X":
+                elif self.maze[r, c] == "X":
                     self.occupied.add((r, c))
-                elif maze[r, c] in {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"}:
-                    t = int(maze[r, c])
+                elif self.maze[r, c] in {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"}:
+                    t = int(self.maze[r, c])
                     self.shape_type_ids[(r, c)] = t
                     shapes_by_type.setdefault(t, []).append((r, c))
         shape_id = 0
