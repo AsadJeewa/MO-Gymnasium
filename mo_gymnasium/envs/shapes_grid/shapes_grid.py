@@ -163,18 +163,73 @@ class ShapesGrid(gym.Env, EzPickle):
                 shape_id += 1
         
         self.action_space = Discrete(4)
+        
+        self.num_shape_types = len(self.all_shapes)          # e.g., 3
+        self.agent_code = 1
+        self.wall_code = 2
+        self.shape_base = 3                                   # shapes: 2,3,4...
+        self.goal_code = self.shape_base + self.num_shape_types
+        self.max_obs_value = self.goal_code
+
         self.observation_space = Box(
-            low=np.zeros(2 + len(self.shape_ids)),
-            high=len(self.maze) * np.ones(2 + len(self.shape_ids)),
+            low=0,
+            high=1,
+            shape=(self.max_obs_value, self.height, self.width),
             dtype=np.float32,
         )
         self.reward_space = Box(low=0, high=1, shape=(3,))
         self.reward_dim = 3
 
-    def state_to_array(self, state):
-        # converts multiple tuples to an array
-        s = [element for tupl in state for element in tupl]
-        return np.array(s, dtype=np.float32)
+    def state_to_grid(self, state):
+        """
+        Return a multi-channel grid (C, H, W) encoding the map and agent.
+        Shapes that have already been collected are removed.
+        """
+        (r, c), collected = state
+
+        H, W = self.height, self.width
+        C = self.max_obs_value  # one channel per semantic code (excluding 0)
+
+        # channels indexed by (code - 1)
+        grid = np.zeros((C, H, W), dtype=np.float32)
+
+        # === Walls ===
+        for pr, pc in self.occupied:
+            ch = self.wall_code - 1
+            grid[ch, pr, pc] = 1.0
+
+        # === Shapes (only if NOT collected) ===
+        for (sr, sc), shape_id in self.shape_ids.items():
+            if collected[shape_id] == 0:
+                shape_type = self.shape_type_ids[(sr, sc)]  # 1..num_shape_types
+                code = self.shape_base + (shape_type - 1)
+                ch = code - 1
+                grid[ch, sr, sc] = 1.0
+
+        # === Goal ===
+        gr, gc = self.goal
+        grid[self.goal_code - 1, gr, gc] = 1.0
+
+        # === Agent ===
+        grid[self.agent_code - 1, r, c] = 1.0
+        
+        # === Apply shape type mask ===
+        if self.specialisation != 0:
+            shape_type_mask = self.specialisation
+            # shape_type_mask: int 1..num_shape_types
+            # compute channel for this shape
+            semantic_code = self.shape_base + (shape_type_mask - 1)  # 3, 4, 5 ...
+            channel_idx = semantic_code - 1  # convert semantic code (1-based) to array index (0-based)
+            # zero all other shape channels
+            shape_channels = [
+                self.shape_base + i - 1 for i in range(self.num_shape_types)
+            ]
+            for ch in shape_channels:
+                if ch != channel_idx:
+                    grid[ch] = 0.0
+                
+        return grid
+
 
     def reset(self, seed=None, **kwargs):
         super().reset(seed=seed)
@@ -186,7 +241,7 @@ class ShapesGrid(gym.Env, EzPickle):
         )
         if self.render_mode == "human":
             self.render()
-        return self.state_to_array(self.state), {}
+        return self.state_to_grid(self.state), {}
 
     def step(self, action):
         prev_state = self.state #initially from reset
@@ -208,7 +263,7 @@ class ShapesGrid(gym.Env, EzPickle):
         # out of bounds, cannot move
         if col < 0 or col >= self.width or row < 0 or row >= self.height:
             return (
-                self.state_to_array(self.state),# obs
+                self.state_to_grid(self.state),# obs
                 np.ones(len(self.all_shapes), dtype=np.float32) * self.TIME_PENALTY,
                 terminated,
                 False,
@@ -219,7 +274,7 @@ class ShapesGrid(gym.Env, EzPickle):
         pos = (row, col)
         if pos in self.occupied:
             return (
-                self.state_to_array(self.state),
+                self.state_to_grid(self.state),
                 np.ones(len(self.all_shapes), dtype=np.float32) * self.TIME_PENALTY,
                 terminated,
                 False,
@@ -235,7 +290,7 @@ class ShapesGrid(gym.Env, EzPickle):
         if pos == self.goal:
             phi = self.calc_vect_reward(prev_state, self.state)
             terminated = True
-            return self.state_to_array(self.state), phi, terminated, False, {}
+            return self.state_to_grid(self.state), phi, terminated, False, {}
 
         # into a shape cell
         if pos in self.shape_ids: #row col
@@ -244,7 +299,7 @@ class ShapesGrid(gym.Env, EzPickle):
                 
                 # already collected this flag
                 return (
-                    self.state_to_array(self.state),
+                    self.state_to_grid(self.state),
                     np.ones(len(self.all_shapes), dtype=np.float32) * self.TIME_PENALTY,
                     terminated,
                     False,
@@ -257,21 +312,16 @@ class ShapesGrid(gym.Env, EzPickle):
                 collected = tuple(collected)
                 self.state = (pos, collected)
                 phi = self.calc_vect_reward(prev_state, self.state)
-                return self.state_to_array(self.state), phi, terminated, False, {}
+                return self.state_to_grid(self.state), phi, terminated, False, {}
 
         # into an empty cell
         return (
-            self.state_to_array(self.state),
+            self.state_to_grid(self.state),
             np.ones(len(self.all_shapes), dtype=np.float32) * self.TIME_PENALTY,
             terminated,
             False,
             {},
         )
-
-    def get_spec_obs(self):
-        pos, collected_all = self.state
-        masked = self.get_masked_collected(collected_all)
-        return np.expand_dims(self.state_to_array((pos, masked)), axis=0)
 
     def calc_vect_reward(self, state, next_state):
         pos, _ = next_state
@@ -405,19 +455,8 @@ class ShapesGrid(gym.Env, EzPickle):
             self.window = None
             self.clock = None
     
-    def update_specialisation(self,specialisation):
+    def set_specialisation(self,specialisation):
         self.specialisation = specialisation
-        return np.expand_dims(self.get_spec_obs(), axis=0) #TODO check
-
-    def get_masked_collected(self, collected_all):
-        collected_all = np.array(collected_all, dtype=np.float32)
-        shape_types_list = [self.shape_type_ids[pos] for pos, _ in sorted(self.shape_ids.items(), key=lambda kv: kv[1])]
-        if self.specialisation == 0:
-            return np.array(collected_all)
-        active_indices = [i for i, v in enumerate(shape_types_list) if v == self.specialisation]
-        mask = np.zeros(len(collected_all), dtype=np.float32)
-        mask[active_indices] = 1.0
-        return np.array(collected_all*mask)
 
     def to_obj_string(self, obj_num):
         if obj_num == 0:
