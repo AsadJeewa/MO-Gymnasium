@@ -191,12 +191,12 @@ class ShapesGrid(gym.Env, EzPickle):
         C = self.max_obs_value  # one channel per semantic code (excluding 0)
 
         # channels indexed by (code - 1)
-        grid = np.zeros((C, H, W), dtype=np.float32)
+        self.grid = np.zeros((C, H, W), dtype=np.float32)
 
         # === Walls ===
         for pr, pc in self.occupied:
             ch = self.wall_code - 1
-            grid[ch, pr, pc] = 1.0
+            self.grid[ch, pr, pc] = 1.0
 
         # === Shapes (only if NOT collected) ===
         for (sr, sc), shape_id in self.shape_ids.items():
@@ -204,33 +204,31 @@ class ShapesGrid(gym.Env, EzPickle):
                 shape_type = self.shape_type_ids[(sr, sc)]  # 1..num_shape_types
                 code = self.shape_base + (shape_type - 1)
                 ch = code - 1
-                grid[ch, sr, sc] = 1.0
+                self.grid[ch, sr, sc] = 1.0
 
         # === Goal ===
         gr, gc = self.goal
-        grid[self.goal_code - 1, gr, gc] = 1.0
-
+        self.grid[self.goal_code - 1, gr, gc] = 1.0
         # === Agent ===
-        grid[self.agent_code - 1, r, c] = 1.0
-        
-        # === Apply shape type mask ===
-        if self.specialisation != 0:
-            shape_type_mask = self.specialisation
-            # shape_type_mask: int 1..num_shape_types
-            # compute channel for this shape
-            semantic_code = self.shape_base + (shape_type_mask - 1)  # 3, 4, 5 ...
-            channel_idx = semantic_code - 1  # convert semantic code (1-based) to array index (0-based)
-            # zero all other shape channels
-            shape_channels = [
-                self.shape_base + i - 1 for i in range(self.num_shape_types)
-            ]
-            for ch in shape_channels:
-                if ch != channel_idx:
-                    grid[ch] = 0.0
-                
+        self.grid[self.agent_code - 1, r, c] = 1.0              
+        return self.grid
+
+    def get_specialised_obs(self):
+        shape_type_mask = self.specialisation
+        grid = self.grid
+        # shape_type_mask: int 1..num_shape_types
+        # compute channel for this shape
+        semantic_code = self.shape_base + (shape_type_mask - 1)  # 3, 4, 5 ...
+        channel_idx = semantic_code - 1  # convert semantic code (1-based) to array index (0-based)
+        # zero all other shape channels
+        shape_channels = [
+            self.shape_base + i - 1 for i in range(self.num_shape_types)
+        ]
+        for ch in shape_channels:
+            if ch != channel_idx:
+                grid[ch] = 0.0
         return grid
-
-
+    
     def reset(self, seed=None, **kwargs):
         super().reset(seed=seed)
         self.seed = seed
@@ -457,7 +455,6 @@ class ShapesGrid(gym.Env, EzPickle):
     
     def set_specialisation(self,specialisation):
         self.specialisation = specialisation
-        return self.state_to_grid(self.state)
 
     def to_obj_string(self, obj_num):
         if obj_num == 0:
