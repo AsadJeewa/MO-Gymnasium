@@ -109,7 +109,7 @@ class ShapesGrid(gym.Env, EzPickle):
                 [" ", " ", "2", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", "2", " "],
                 [" ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", "1", " ", " ", " ", " "],
                 [" ", " ", " ", "1", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "],
-                [" ", " ", " ", " ", " ", " ", " ", "3", " ", " ", " ", " ", " ", " ", " ", " "],#TODO MOVE S BELOW
+                [" ", " ", " ", " ", " ", " ", " ", "3", " ", " ", " ", " ", " ", " ", " ", " "],
                 ["S", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", "2", " ", " ", " ", " "],
             ]) 
         }
@@ -457,6 +457,7 @@ class ShapesGrid(gym.Env, EzPickle):
     
     def set_specialisation(self,specialisation):
         self.specialisation = specialisation
+        return self.state_to_grid(self.state)
 
     def to_obj_string(self, obj_num):
         if obj_num == 0:
