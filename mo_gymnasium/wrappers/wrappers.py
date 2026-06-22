@@ -305,10 +305,60 @@ class MOMaxAndSkipObservation(gym.Wrapper):
 
 class SingleRewardWrapper(gym.Wrapper):
     def __init__(self, env, reward_idx=0):
+        """
+        Wrap an environment to pick a single reward component.
+
+        Args:
+            env: the original multi-objective gym environment
+            reward_idx: int, index of the reward component to use
+        """
         super().__init__(env)
         self.reward_idx = reward_idx
 
     def step(self, action):
+        """
+        Take an action and return only the selected reward component.
+
+        Args:
+            action: action to take in the environment
+
+        Returns:
+            obs: observation after action
+            reward: float, the selected reward component
+            terminated: bool, episode termination flag
+            truncated: bool, episode truncation flag
+            info: dict, environment info
+        """
         obs, reward_vec, terminated, truncated, info = self.env.step(action)
         reward = float(reward_vec[self.reward_idx])  # pick only one component
+        return obs, reward, terminated, truncated, info
+
+class WeightedRewardWrapper(gym.Wrapper):
+    def __init__(self, env):
+        super().__init__(env)
+
+    def step(self, action, weights):
+        """
+        Take an action and compute the weighted sum of rewards.
+
+        Args:
+            action: action to take in the environment
+            weights: array-like of shape (num_rewards,) for weighting each reward component
+
+        Returns:
+            obs: observation after action
+            reward: float, weighted sum of rewards
+            terminated: bool, episode termination flag
+            truncated: bool, episode truncation flag
+            info: dict, environment info
+        """
+        obs, reward_vec, terminated, truncated, info = self.env.step(action)
+        reward_vec = np.array(reward_vec, dtype=float)
+        weights = np.array(weights, dtype=float)
+
+        assert reward_vec.shape == weights.shape, (
+            f"Reward dimension {reward_vec.shape} must match weights dimension {weights.shape}"
+        )
+
+        reward = float(np.dot(reward_vec, weights))
         return obs, reward, terminated, truncated, info
