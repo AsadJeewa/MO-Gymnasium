@@ -718,7 +718,7 @@ class Mine:
         Returns:
             list -- list of collected resources
         """
-        return [max(0.0, dist.rvs()) for dist in self.distributions]
+        return [max(0.0, dist.rvs()) for dist in self.distributions] # mines all ore
 
     def distribution_means(self):
         """
