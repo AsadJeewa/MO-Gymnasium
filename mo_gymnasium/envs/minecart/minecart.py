@@ -149,7 +149,8 @@ class Minecart(gym.Env, EzPickle):
         self.canvas = None
         self.clock = None
         self.last_render_mode_used = None
-        self.config = config
+        self.config=str(Path(__file__).parent.absolute() / config)
+
         self.frame_skip = frame_skip
         assert self.frame_skip > 0, "Frame skip must be greater than 0."
         self.incremental_frame_skip = incremental_frane_skip
