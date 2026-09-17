@@ -105,11 +105,11 @@ register(
 register(
     id="mo-reacher-v4",
     entry_point="mo_gymnasium.envs.mujoco.reacher_v4:MOReacherEnv",
-    max_episode_steps=50,
+    max_episode_steps=250,
 )
 
 register(
     id="mo-reacher-v5",
     entry_point="mo_gymnasium.envs.mujoco.reacher_v5:MOReacherEnv",
-    max_episode_steps=50,
+    max_episode_steps=250,
 )
