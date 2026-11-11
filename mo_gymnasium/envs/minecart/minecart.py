@@ -511,7 +511,7 @@ class Minecart(gym.Env, EzPickle):
                 total_mined = np.sum(mined)
                 if total_mined > cart_free:
                     # Scale mined content to remaining capacity
-                    scale = cart_free / total_mined
+                    scale = (max(cart_free, 0.0) / total_mined) if total_mined > 0 else 0.0
                     mined = np.array(mined) * scale
 
                 self.cart.content += mined
